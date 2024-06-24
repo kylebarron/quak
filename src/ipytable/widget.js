@@ -130,7 +130,9 @@ export default () => {
 				/** @type {QueryFn} */
 				query(query) {
 					console.log(query);
-					return new Promise((resolve, reject) => send(query, resolve, reject));
+					return new Promise((resolve, reject) =>
+						send(query, resolve, reject)
+					);
 				},
 			};
 
@@ -571,7 +573,8 @@ class Histogram extends mc.MosaicClient {
 			this.#el.appendChild(this.svg);
 			this.#initialized = true;
 		} else {
-			this.svg?.update(bins);
+			// todo: update the svg
+			// update(this.svg, newData)
 		}
 		return this;
 	}
@@ -720,7 +723,9 @@ function thcol(field, minWidth, sortState, vis) {
 	});
 
 	signals.effect(() => {
-		sortButton.style.visibility = buttonVisible.value ? "visible" : "hidden";
+		sortButton.style.visibility = buttonVisible.value
+			? "visible"
+			: "hidden";
 	});
 
 	signals.effect(() => {
@@ -1405,24 +1410,6 @@ export function markQuery(channels, table, skip = []) {
 	return q;
 }
 
-// @deno-types="npm:@types/d3@7.4.3"
-import * as d3 from "https://esm.sh/d3@7.8.5";
-// TODO: idk these types are really annoying
-let scaleLinear = /** @type {import("npm:@types/d3-scale").scaleLinear} */ (d3
-	// @ts-expect-error - d3 types are incorrect
-	.scaleLinear);
-let scaleTime = /** @type {import("npm:@types/d3-scale").scaleLinear} */ (d3
-	// @ts-expect-error - d3 types are incorrect
-	.scaleTime);
-let create = /** @type {import("npm:@types/d3-selection").create} */ (d3
-	// @ts-expect-error - d3 types are incorrect
-	.create);
-let axisBottom =
-	// @ts-expect-error - d3 types are incorrect
-	/** @type {import("npm:@types/d3-axis").axisBottom} */ (d3.axisBottom);
-let format = // @ts-expect-error - d3 types are incorrect
-	/** @type {import("npm:@types/d3-format").format} */ (d3.format);
-
 /**
  * @typedef Bin
  * @property {number} x0
@@ -1444,19 +1431,44 @@ let format = // @ts-expect-error - d3 types are incorrect
  * @property {SVGElement} [el]
  */
 
-let timeFormat = /** @type {import("npm:@types/d3-scale").scaleLinear} */ (d3
+// @deno-types="npm:@types/d3@7.4";
+import * as d3 from "https://esm.sh/d3@7.8.5";
+// TODO: idk these types are really annoying
+let scaleLinear = /** @type {import("npm:@types/d3-scale").scaleLinear} */ (d3
+	// @ts-expect-error - d3 types are incorrect
+	.scaleLinear);
+let scaleTime = /** @type {import("npm:@types/d3-scale").scaleLinear} */ (d3
+	// @ts-expect-error - d3 types are incorrect
+	.scaleTime);
+let create = /** @type {import("npm:@types/d3-selection").create} */ (d3
+	// @ts-expect-error - d3 types are incorrect
+	.create);
+let axisBottom =
+	// @ts-expect-error - d3 types are incorrect
+	/** @type {import("npm:@types/d3-axis").axisBottom} */ (d3.axisBottom);
+let format = // @ts-expect-error - d3 types are incorrect
+	/** @type {import("npm:@types/d3-format").format} */ (d3.format);
+let timeFormat = /** @type {import("npm:@types/d3-time-format").timeFormat} */ (d3
 	// @ts-expect-error - d3 types are incorrect
 	.timeFormat);
 
-let formatMap = {
-	[MILLISECOND]: timeFormat("%L"),
-	[SECOND]: timeFormat("%S s"),
-	[MINUTE]: timeFormat("%H:%M"),
-	[HOUR]: timeFormat("%H:%M"),
-	[DAY]: timeFormat("%b %d"),
-	[MONTH]: timeFormat("%b %Y"),
-	[YEAR]: timeFormat("%Y"),
-};
+/** @param {Array<Bin>} bins */
+function getFormatterForTimeBins(bins) {
+	let interval = timeInterval(
+		bins[0].x0,
+		bins[bins.length - 1].x1,
+		bins.length,
+	);
+	return {
+		[MILLISECOND]: timeFormat("%L"),
+		[SECOND]: timeFormat("%S s"),
+		[MINUTE]: timeFormat("%H:%M"),
+		[HOUR]: timeFormat("%H:%M"),
+		[DAY]: timeFormat("%b %d"),
+		[MONTH]: timeFormat("%b %Y"),
+		[YEAR]: timeFormat("%Y"),
+	}[interval.interval];
+}
 
 /**
  * @param {Array<Bin>} data
@@ -1487,17 +1499,13 @@ function hist(
 	let midLastBin = (bins[bins.length - 1].x0 + bins[bins.length - 1].x1) / 2;
 
 	if (type === "date") {
-		let interval = timeInterval(
-			bins[0].x0,
-			bins[bins.length - 1].x1,
-			bins.length,
-		);
 		x = scaleTime()
 			.domain([bins[0].x0, bins[bins.length - 1].x1])
 			.range([marginLeft + avgBinWidth, width - marginRight]);
 		xAxis = axisBottom(x)
 			.tickValues([midFirstBin, midLastBin])
-			.tickFormat(formatMap[interval.interval])
+			// @ts-expect-error - should work fine for number scales
+			.tickFormat(getFormatterForTimeBins(bins))
 			.tickSize(2.5);
 	} else {
 		x = scaleLinear()
