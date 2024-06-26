@@ -4,6 +4,7 @@
 		"checkJs": true,
 		"allowJs": true,
 		"lib": [
+			"deno.ns",
 			"ES2020",
 			"DOM",
 			"DOM.Iterable"
